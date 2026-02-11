@@ -1,0 +1,369 @@
+manifest:
+  version: "0.1.3"
+  schema: https://a2as.org/cert/schema
+  subject:
+    name: vero-code/venture-assist-ai
+    source: https://github.com/vero-code/venture-assist-ai
+    branch: master
+    commit: "4bbd6844"
+    scope: [backend/agent.py, backend/agents.py, backend/config.py, backend/main.py, backend/tools.py, multi_tool_agent/agent.py]
+  issued:
+    by: A2AS.org
+    at: '2026-02-11T16:41:34Z'
+    url: https://a2as.org/certified/agents/vero-code/venture-assist-ai
+  signatures:
+    digest: sha256:XQ1Qw9GKOmScQk22sHIxYzpQ9Sz-1VaFqJspeyGCLoo
+    key: ed25519:VLoeug3f4SkCxhnOqWLASG1rRNCDYKo0IRNcBRiOris
+    sig: ed25519:7anL6zLrbP1KNt4Xq3cxXc61JkF4wWL2V-8TOMYtQfoi-Sup9ZwoYk1Jp09cAFfm-l5-3Q2GBfYhQbR65kSBBQ
+
+agents:
+  idea_validator_agent:
+    type: instance
+    models: [gemini-2.5-flash]
+    tools: [get_validator]
+    params:
+      name: IdeaValidatorAgent
+      instruction: ['You are an expert in startup idea validation. Your task is to thoroughly analyze provided ideas and give
+          constructive feedback, pointing out potential problems and areas for improvement. Use only the ''get_validator''
+          tool to check ideas.']
+      description: An agent specializing in validating new startup ideas and providing feedback.
+  logo_creator_agent:
+    type: instance
+    models: [gemini-2.5-pro]
+    tools: [get_logo]
+    params:
+      name: LogoCreatorAgent
+      instruction: [You are a creative agent specializing in logo concept creation. Use only the 'get_logo' tool to generate
+          logo ideas and images. Respond by providing the logo concept and its URL.]
+      description: An agent for creating project logos.
+  market_researcher_agent:
+    type: instance
+    models: [gemini-2.5-pro]
+    tools: [get_research]
+    params:
+      name: MarketResearcherAgent
+      instruction: ['You are an expert in market research and competitor analysis. Use only the ''get_research'' tool to gather
+          and analyze information. Answer questions about market size, trends, and competitors.']
+      description: An agent for conducting general market research and competitor analysis.
+  meet_maker_agent:
+    type: instance
+    models: [gemini-2.5-pro]
+    tools: [get_meeting]
+    params:
+      name: MeetMakerAgent
+      instruction: [You are an assistant agent for meeting scheduling. Use only the 'get_meeting' tool to organize meetings
+          with participants. Help users schedule meetings with investors or their team.]
+      description: An agent for scheduling meetings with investors.
+  pitch_deck_generator_agent:
+    type: instance
+    models: [gemini-2.5-flash]
+    tools: [get_pitch]
+    params:
+      name: PitchDeckGeneratorAgent
+      instruction: [You are an expert in creating compelling pitch decks. Use only the 'get_pitch' tool to write pitch deck
+          content. Your task is to help the user create a draft of a complete pitch deck.]
+      description: An agent for generating pitch deck drafts and sections.
+  root_agent.0:
+    type: instance
+    models: [gemini-2.0-flash]
+    tools: [get_weather, get_current_time]
+    params:
+      name: weather_time_agent
+      description: Agent to answer questions about the time and weather in a city.
+      instruction: [You are a helpful agent who can answer user questions about the time and weather in a city.]
+      instance: root_agent
+  root_agent.1:
+    type: instance
+    models: [gemini-2.5-pro]
+    params:
+      name: VentureCoordinatorAgent
+      description: The main coordinator of all Venture Assist AI operations, delegating requests to specialized agents.
+      instance: root_agent
+      sub_agents: [ALL_SUB_AGENTS]
+  summary_saver_agent:
+    type: instance
+    models: [gemini-2.5-flash]
+    tools: [get_summary, get_saver]
+    params:
+      name: SummarySaverAgent
+      description: An agent for summarizing and saving content with memory of the last summary.
+
+models:
+  gemini-2.0-flash:
+    type: literal
+    agents: [root_agent.0]
+  gemini-2.5-flash:
+    type: literal
+    agents: [idea_validator_agent, pitch_deck_generator_agent, summary_saver_agent]
+  gemini-2.5-pro:
+    type: literal
+    agents: [market_researcher_agent, logo_creator_agent, meet_maker_agent, root_agent.1]
+
+tools:
+  get_current_time:
+    type: function
+    agents: [root_agent.0]
+    params:
+      description: |-
+        Returns the current time in a specified city.
+
+        Args:
+            city (str): The name of the city for which to retrieve the current time.
+
+        Returns:
+            dict: status and result or error msg.
+  get_logo:
+    type: function
+    agents: [logo_creator_agent]
+    params:
+      description: Generates a logo concept using Gemini and creates a Google Slides slide for visual representation.
+  get_meeting:
+    type: function
+    agents: [meet_maker_agent]
+    params:
+      description: Schedules a real meeting in Google Calendar with Google Meet link.
+  get_pitch:
+    type: function
+    agents: [pitch_deck_generator_agent]
+    params:
+      description: |-
+        Generates a draft or sections of a pitch deck based on the provided idea summary,
+        using an LLM to generate compelling content for each specified section.
+        Args:
+            idea_summary (str): A brief description of the startup idea.
+            sections (List[str], optional): A list of specific sections to generate
+                                            (e.g., "Problem", "Solution", "Market", "Team", "Business Model", "Competition", "Financials", "Call to Action").
+                                            Defaults to ["Problem", "Solution", "Market", "Team"] if not provided.
+        Returns:
+            str: The generated pitch deck text or its sections.
+  get_research:
+    type: function
+    agents: [market_researcher_agent]
+    params:
+      description: |-
+        Conducts general market research on a given topic, including market size,
+        key competitors, current trends, and future outlook using an LLM.
+        Args:
+            topic (str): The topic or industry for research.
+        Returns:
+            dict: Market research results.
+  get_saver:
+    type: function
+    agents: [summary_saver_agent]
+    params:
+      description: |-
+        Saves content to Google Drive using provided credentials.
+        Prioritizes content from session state if available and no explicit content_to_save is provided.
+  get_summary:
+    type: function
+    agents: [summary_saver_agent]
+    params:
+      description: |-
+        Creates a brief, high-quality summary of the provided content using an LLM.
+        and stores it in the session state for later saving.
+        Args:
+            content_to_summarize (str): Long text or report to be summarized.
+            tool_context (ToolContext): ADK ToolContext for accessing session state.
+        Returns:
+            str: The condensed summary.
+  get_validator:
+    type: function
+    agents: [idea_validator_agent]
+    params:
+      description: |-
+        Validates a startup idea and provides feedback on its potential and viability.
+        Uses an LLM for deeper analysis.
+        Args:
+            idea (str): Description of the startup idea.
+            detailed_feedback (bool): If True, provide more detailed feedback.
+        Returns:
+            dict: Validation status and message.
+  get_weather:
+    type: function
+    agents: [root_agent.0]
+    params:
+      description: |-
+        Retrieves the current weather report for a specified city.
+
+        Args:
+            city (str): The name of the city for which to retrieve the weather report.
+
+        Returns:
+            dict: status and result or error msg.
+
+teams:
+  root_agent.1:
+    type: hierarchy
+    agents: [root_agent.1, ALL_SUB_AGENTS]
+
+imports:
+  Agent: google.adk.agents.Agent
+  agent: agent
+  ALL_SUB_AGENTS: agents.ALL_SUB_AGENTS
+  BaseModel: pydantic.BaseModel
+  build: googleapiclient.discovery.build
+  Content: google.genai.types.Content
+  CORSMiddleware: fastapi.middleware.cors.CORSMiddleware
+  Credentials: google.oauth2.credentials.Credentials
+  datetime: datetime
+  FastAPI: fastapi.FastAPI
+  Flow: google_auth_oauthlib.flow.Flow
+  genai: google.generativeai
+  get_logo: tools.get_logo
+  get_meeting: tools.get_meeting
+  get_pitch: tools.get_pitch
+  get_research: tools.get_research
+  get_saver: tools.get_saver
+  get_summary: tools.get_summary
+  get_validator: tools.get_validator
+  HttpError: googleapiclient.errors.HttpError
+  HTTPException: fastapi.HTTPException
+  InMemorySessionService: google.adk.sessions.InMemorySessionService
+  json: json
+  List: typing.List
+  load_dotenv: dotenv.load_dotenv
+  MODEL_GEMINI_FLASH: config.MODEL_GEMINI_FLASH
+  MODEL_GEMINI_PRO: config.MODEL_GEMINI_PRO
+  Optional: typing.Optional
+  os: os
+  Part: google.genai.types.Part
+  RedirectResponse: fastapi.responses.RedirectResponse
+  Request: fastapi.Request
+  requests: requests
+  root_agent: agent.root_agent
+  RunConfig: google.adk.agents.run_config.RunConfig
+  Runner: google.adk.runners.Runner
+  status: fastapi.status
+  StreamingMode: google.adk.agents.run_config.StreamingMode
+  TEST_USER_ID: state.TEST_USER_ID
+  timezone: datetime.timezone
+  ToolContext: google.adk.tools.tool_context.ToolContext
+  traceback: traceback
+  user_tokens_store: state.user_tokens_store
+  uuid: uuid
+  ZoneInfo: zoneinfo.ZoneInfo
+
+functions:
+  chat_with_ai:
+    type: async
+    module: backend.main
+    args: [request]
+  extract_meeting_slots:
+    type: sync
+    module: backend.tools
+    args: [preferred_date, model_name]
+    params:
+      returns: list
+  get_current_time:
+    type: sync
+    module: multi_tool_agent.agent
+    args: [city]
+    params:
+      returns: dict
+  get_logo:
+    type: sync
+    module: backend.tools
+    args: [idea_description]
+    params:
+      returns: str
+  get_meeting:
+    type: sync
+    module: backend.tools
+    args: [purpose, participant_email, preferred_date]
+    params:
+      returns: str
+  get_pitch:
+    type: sync
+    module: backend.tools
+    args: [idea_summary, sections]
+    params:
+      returns: str
+  get_research:
+    type: sync
+    module: backend.tools
+    args: [topic]
+    params:
+      returns: dict
+  get_saver:
+    type: sync
+    module: backend.tools
+    args: [content_to_save, file_name, tool_context]
+    params:
+      returns: str
+  get_summary:
+    type: sync
+    module: backend.tools
+    args: [content_to_summarize, tool_context]
+    params:
+      returns: str
+  get_validator:
+    type: sync
+    module: backend.tools
+    args: [idea, detailed_feedback]
+    params:
+      returns: dict
+  get_weather:
+    type: sync
+    module: multi_tool_agent.agent
+    args: [city]
+    params:
+      returns: dict
+  google_auth:
+    type: async
+    module: backend.main
+  oauth2callback:
+    type: async
+    module: backend.main
+    args: [request]
+  read_root:
+    type: async
+    module: backend.main
+  startup_event:
+    type: async
+    module: backend.main
+
+variables:
+  FRONTEND_URL:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.main]
+  GOOGLE_CLIENT_ID:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.main]
+  GOOGLE_CLIENT_SECRET:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.main]
+  GOOGLE_PROJECT_ID:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.main]
+  GOOGLE_REDIRECT_URI:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.main]
+
+networks:
+  docs.google.com:
+    type: api
+    actions: [GET]
+    urls: ['/{...}']
+    protocols: [https]
+    ports: ["443"]
+    params:
+      pattern: https://docs.google.com/presentation/d/{presentation_id}/edit
+      caller: [get_logo]
+  www.googleapis.com:
+    type: api
+    actions: [POST]
+    urls: ['/upload/drive/v3/files?uploadType=multipart', /calendar/v3/calendars/primary/events]
+    protocols: [https]
+    ports: ["443"]
+    params:
+      caller: [get_saver, get_meeting]
